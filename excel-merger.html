@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Merger - Merge Multiple Excel Files</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0F172A;
+            --primary-light: #1E293B;
+            --accent: #06B6D4;
+            --accent-dark: #0891B2;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --bg: #F8FAFC;
+            --card: #FFFFFF;
+            --text: #0F172A;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1d3a 25%, #0f1729 50%, #000000 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            padding: 2rem;
+            color: var(--text);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: backgroundMove 20s linear infinite;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.15), transparent 50%),
+                        radial-gradient(ellipse at bottom, rgba(147, 51, 234, 0.1), transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes backgroundMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3);
+            letter-spacing: -0.02em;
+            animation: textGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes textGlow {
+            0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3); }
+            50% { text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(255,255,255,0.5); }
+        }
+
+        .header p {
+            font-size: 1.125rem;
+            color: rgba(255,255,255,0.95);
+            font-weight: 500;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .main-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 
+                        0 0 0 1px rgba(59, 130, 246, 0.1) inset,
+                        0 0 60px rgba(59, 130, 246, 0.1);
+            animation: fadeInUp 0.8s ease-out 0.2s both, cardFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes cardFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .upload-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .section-badge {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(59, 130, 246, 0.4);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .upload-area:hover::before {
+            opacity: 1;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(59, 130, 246, 0.8);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 0 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .upload-area.dragover {
+            border-color: rgba(59, 130, 246, 0.9);
+            background: rgba(59, 130, 246, 0.15);
+            transform: scale(1.02);
+            box-shadow: 0 0 60px rgba(59, 130, 246, 0.3);
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.2));
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            border: 2px solid rgba(59, 130, 246, 0.4);
+            animation: iconPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { 
+                transform: scale(1); 
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+            }
+            50% { 
+                transform: scale(1.05); 
+                box-shadow: 0 0 50px rgba(59, 130, 246, 0.5);
+            }
+        }
+
+        .upload-text {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .upload-hint {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.85);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .file-item {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: rgba(15, 23, 42, 0.7);
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.2);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10B981, #059669);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.75rem;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.25rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .file-size {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.8);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .remove-btn {
+            background: var(--error);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .remove-btn:hover {
+            background: #DC2626;
+            transform: scale(1.05);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2.5rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 1rem 2.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Manrope', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(37, 99, 235, 0.4));
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 2px solid rgba(59, 130, 246, 0.6);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 0 50px rgba(59, 130, 246, 0.5);
+            border-color: rgba(59, 130, 246, 0.8);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(37, 99, 235, 0.5));
+        }
+
+        .btn-secondary {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(15, 23, 42, 0.7);
+            border-color: rgba(59, 130, 246, 0.6);
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            margin-top: 2rem;
+            padding: 1.25rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-align: center;
+            animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1), statusPulse 2s ease-in-out infinite;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 2px solid rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .status-info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200px 0; }
+            100% { background-position: 200px 0; }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+            animation: statFadeIn 0.5s ease-out backwards;
+        }
+
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.3s; }
+        .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes statFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px) scale(1.05);
+            background: rgba(15, 23, 42, 0.7);
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #3b82f6;
+            font-family: 'JetBrains Mono', monospace;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            animation: numberCount 1s ease-out;
+        }
+
+        @keyframes numberCount {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.9);
+            margin-top: 0.5rem;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-card {
+                padding: 1.5rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .footer {
+                margin-top: 2rem;
+                padding: 1rem;
+            }
+
+            .footer-content {
+                padding: 1rem 1.5rem;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .footer-divider {
+                display: none;
+            }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .footer-content {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 40px rgba(59, 130, 246, 0.1);
+            animation: fadeInUp 1s ease-out 0.4s both;
+            margin: 0 auto;
+        }
+
+        .footer-text {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .developer-profile {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .developer-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            object-fit: cover;
+            transition: all 0.3s ease;
+            animation: avatarFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes avatarFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .developer-avatar:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+            border-color: rgba(59, 130, 246, 0.8);
+        }
+
+        .developer-name {
+            font-size: 1.125rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            animation: nameGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes nameGlow {
+            0%, 100% { 
+                filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+            }
+            50% { 
+                filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8));
+            }
+        }
+
+        .footer-links {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .footer-link {
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .footer-link:hover {
+            color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .footer-divider {
+            color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Excel Merger for Shopify</h1>
+            <p>Merge multiple Excel files seamlessly into one</p>
+        </div>
+
+        <div class="main-card">
+            <div class="upload-section">
+                <div class="section-title">
+                    <span class="section-badge">1</span>
+                    Original File
+                </div>
+                <div class="upload-area" id="originalUploadArea">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Drop your original Excel file here</div>
+                    <div class="upload-hint">or click to browse • Supports .xlsx, .xls, .csv</div>
+                    <input type="file" id="originalFile" accept=".xlsx,.xls,.csv">
+                </div>
+                <div id="originalFileList" class="file-list"></div>
+            </div>
+
+            <div class="upload-section">
+                <div class="section-title">
+                    <span class="section-badge">2</span>
+                    Files to Merge
+                </div>
+                <div class="upload-area" id="mergeUploadArea">
+                    <div class="upload-icon">📑</div>
+                    <div class="upload-text">Drop multiple Excel files to merge</div>
+                    <div class="upload-hint">or click to browse • Multiple files supported</div>
+                    <input type="file" id="mergeFiles" accept=".xlsx,.xls,.csv" multiple>
+                </div>
+                <div id="mergeFileList" class="file-list"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" id="clearBtn">
+                    🗑️ Clear All
+                </button>
+                <button class="btn btn-primary" id="mergeBtn" disabled>
+                    <span id="mergeBtnText">✨ Merge Files</span>
+                    <span id="mergeLoader" class="loader" style="display: none;"></span>
+                </button>
+            </div>
+
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <label style="font-weight: 600; color: white; margin-right: 1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Output Format:</label>
+                <select id="outputFormat" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: 2px solid rgba(59, 130, 246, 0.4); font-family: 'Manrope', sans-serif; font-weight: 600; color: white; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <option value="xlsx" style="background: #0f172a; color: white;">Excel (.xlsx)</option>
+                    <option value="csv" style="background: #0f172a; color: white;">CSV (.csv)</option>
+                </select>
+            </div>
+
+            <div id="statusMessage"></div>
+            <div id="stats"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-text">Developed by:</div>
+            <div class="developer-profile">
+                <img src="mypic.jpg" alt="Hafiz Muhammad Ahsan" class="developer-avatar">
+                <div class="developer-name">Hafiz Muhammad Ahsan</div>
+            </div>
+            <div class="footer-links">
+                <span class="footer-link">💼 Web Developer</span>
+                <span class="footer-divider">•</span>
+                <span class="footer-link">⚡ Excel Automation Specialist</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let originalFile = null;
+        let mergeFiles = [];
+
+        // Setup drag and drop
+        function setupDragAndDrop(uploadArea, fileInput, isMultiple) {
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => {
+                    uploadArea.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => {
+                    uploadArea.classList.remove('dragover');
+                }, false);
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (isMultiple) {
+                    fileInput.files = files;
+                    handleMergeFiles(files);
+                } else {
+                    const newFileList = new DataTransfer();
+                    newFileList.items.add(files[0]);
+                    fileInput.files = newFileList.files;
+                    handleOriginalFile(files[0]);
+                }
+            }, false);
+        }
+
+        setupDragAndDrop(
+            document.getElementById('originalUploadArea'),
+            document.getElementById('originalFile'),
+            false
+        );
+
+        setupDragAndDrop(
+            document.getElementById('mergeUploadArea'),
+            document.getElementById('mergeFiles'),
+            true
+        );
+
+        document.getElementById('originalFile').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleOriginalFile(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('mergeFiles').addEventListener('change', (e) => {
+            handleMergeFiles(e.target.files);
+        });
+
+        function handleOriginalFile(file) {
+            originalFile = file;
+            displayOriginalFile();
+            updateMergeButton();
+        }
+
+        function handleMergeFiles(files) {
+            mergeFiles = Array.from(files);
+            displayMergeFiles();
+            updateMergeButton();
+        }
+
+        function displayOriginalFile() {
+            const container = document.getElementById('originalFileList');
+            if (!originalFile) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-icon">XLS</div>
+                        <div class="file-details">
+                            <div class="file-name">${originalFile.name}</div>
+                            <div class="file-size">${formatFileSize(originalFile.size)}</div>
+                        </div>
+                    </div>
+                    <button class="remove-btn" onclick="removeOriginalFile()">Remove</button>
+                </div>
+            `;
+        }
+
+        function displayMergeFiles() {
+            const container = document.getElementById('mergeFileList');
+            if (mergeFiles.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = mergeFiles.map((file, index) => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-icon">XLS</div>
+                        <div class="file-details">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${formatFileSize(file.size)}</div>
+                        </div>
+                    </div>
+                    <button class="remove-btn" onclick="removeMergeFile(${index})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function removeOriginalFile() {
+            originalFile = null;
+            document.getElementById('originalFile').value = '';
+            displayOriginalFile();
+            updateMergeButton();
+        }
+
+        function removeMergeFile(index) {
+            mergeFiles.splice(index, 1);
+            displayMergeFiles();
+            updateMergeButton();
+        }
+
+        function updateMergeButton() {
+            const mergeBtn = document.getElementById('mergeBtn');
+            mergeBtn.disabled = !originalFile || mergeFiles.length === 0;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+        }
+
+        function showStats(originalRows, totalMergedRows, totalFiles) {
+            const statsDiv = document.getElementById('stats');
+            statsDiv.innerHTML = `
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value">${originalRows}</div>
+                        <div class="stat-label">Original Rows</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalMergedRows}</div>
+                        <div class="stat-label">Added Rows</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalFiles}</div>
+                        <div class="stat-label">Files Merged</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${originalRows + totalMergedRows}</div>
+                        <div class="stat-label">Total Rows</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            removeOriginalFile();
+            mergeFiles = [];
+            document.getElementById('mergeFiles').value = '';
+            displayMergeFiles();
+            document.getElementById('statusMessage').innerHTML = '';
+            document.getElementById('stats').innerHTML = '';
+        });
+
+        document.getElementById('mergeBtn').addEventListener('click', async () => {
+            const mergeBtn = document.getElementById('mergeBtn');
+            const mergeBtnText = document.getElementById('mergeBtnText');
+            const mergeLoader = document.getElementById('mergeLoader');
+            const outputFormat = document.getElementById('outputFormat').value;
+
+            mergeBtn.disabled = true;
+            mergeBtnText.style.display = 'none';
+            mergeLoader.style.display = 'inline-block';
+            showStatus('Processing files...', 'info');
+
+            try {
+                // Read original file
+                const originalData = await readExcelFile(originalFile);
+                const originalSheet = originalData.Sheets[originalData.SheetNames[0]];
+                const originalJson = XLSX.utils.sheet_to_json(originalSheet, { header: 1 });
+
+                if (originalJson.length === 0) {
+                    throw new Error('Original file is empty');
+                }
+
+                const headers = originalJson[0];
+                let allData = [...originalJson];
+                const originalRowCount = originalJson.length - 1;
+                let totalMergedRows = 0;
+
+                // Process each merge file in sequence
+                for (let i = 0; i < mergeFiles.length; i++) {
+                    showStatus(`Processing file ${i + 1} of ${mergeFiles.length}...`, 'info');
+                    
+                    const mergeData = await readExcelFile(mergeFiles[i]);
+                    const mergeSheet = mergeData.Sheets[mergeData.SheetNames[0]];
+                    const mergeJson = XLSX.utils.sheet_to_json(mergeSheet, { header: 1 });
+
+                    // Skip header row and add data
+                    const dataRows = mergeJson.slice(1);
+                    allData = allData.concat(dataRows);
+                    totalMergedRows += dataRows.length;
+                }
+
+                // Create output file based on selected format
+                const timestamp = new Date().getTime();
+                
+                // Get original filename without extension
+                const originalFileName = originalFile.name.replace(/\.[^/.]+$/, '');
+                
+                if (outputFormat === 'csv') {
+                    // Convert to CSV using XLSX library (more compatible)
+                    const newWorkbook = XLSX.utils.book_new();
+                    const newWorksheet = XLSX.utils.aoa_to_sheet(allData);
+                    XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, 'Merged Data');
+                    
+                    // Export as CSV using XLSX
+                    XLSX.writeFile(newWorkbook, `${originalFileName}_Merged.csv`, { bookType: 'csv' });
+                } else {
+                    // Create Excel file
+                    const newWorkbook = XLSX.utils.book_new();
+                    const newWorksheet = XLSX.utils.aoa_to_sheet(allData);
+                    XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, 'Merged Data');
+                    XLSX.writeFile(newWorkbook, `${originalFileName}_Merged.xlsx`);
+                }
+
+                showStatus(`✅ Files merged successfully! Download started as ${outputFormat.toUpperCase()}`, 'success');
+                showStats(originalRowCount, totalMergedRows, mergeFiles.length);
+
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                mergeBtn.disabled = false;
+                mergeBtnText.style.display = 'inline';
+                mergeLoader.style.display = 'none';
+            }
+        });
+
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const fileName = file.name.toLowerCase();
+                
+                // Check if it's a CSV file
+                if (fileName.endsWith('.csv')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const csvData = e.target.result;
+                            const parsed = Papa.parse(csvData, {
+                                skipEmptyLines: true
+                            });
+                            
+                            // Convert CSV to Excel-like format
+                            const worksheet = XLSX.utils.aoa_to_sheet(parsed.data);
+                            const workbook = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+                            resolve(workbook);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsText(file);
+                } else {
+                    // Handle Excel files (.xlsx, .xls)
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            resolve(workbook);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
