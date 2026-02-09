@@ -1109,6 +1109,49 @@
                 }
             });
         }
+
+        // Security: Disable Developer Tools and View Source
+        (function () {
+            'use strict';
+
+            // Keyboard Shortcuts Disable (F12, Ctrl+Shift+I, Ctrl+U)
+            document.addEventListener('keydown', function (e) {
+                // F12 - Developer Tools
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    alert('⚠️ Developer Mode is not allowed!');
+                    return false;
+                }
+
+                // Ctrl+Shift+I - DevTools
+                if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                    e.preventDefault();
+                    alert('⚠️ Developer Mode is not allowed!');
+                    return false;
+                }
+
+                // Ctrl+Shift+J - Console
+                if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+                    e.preventDefault();
+                    alert('⚠️ Developer Mode is not allowed!');
+                    return false;
+                }
+
+                // Ctrl+U - View Source
+                if (e.ctrlKey && e.key === 'u') {
+                    e.preventDefault();
+                    alert('⚠️ View Source is not allowed!');
+                    return false;
+                }
+
+                // Ctrl+Shift+C - Inspect Element
+                if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    alert('⚠️ Developer Mode is not allowed!');
+                    return false;
+                }
+            });
+        })();
     </script>
 </body>
 </html>
